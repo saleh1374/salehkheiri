@@ -440,6 +440,30 @@ export default function AdminUsers() {
                     <td className="text-right p-3 border-r border-border text-sm font-medium">
                       {user.full_name || "بدون نام"}
                     </td>
+                    <td className="text-right p-3 border-r border-border text-sm" dir="ltr">
+                      <span className="truncate block max-w-[220px]">{user.email || "-"}</span>
+                    </td>
+                    <td className="text-center p-3 border-r border-border">
+                      {user.email_confirmed_at ? (
+                        <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 border-none gap-1">
+                          <MailCheck className="w-3 h-3" />
+                          تأیید شده
+                        </Badge>
+                      ) : user.email ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 h-7 text-xs"
+                          onClick={() => handleConfirmEmail(user.id)}
+                          title="تأیید دستی ایمیل"
+                        >
+                          <MailWarning className="w-3 h-3 text-amber-600" />
+                          تأیید کن
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
+                    </td>
                     <td className="text-right p-3 border-r border-border text-sm">
                       {user.phone || "-"}
                     </td>
