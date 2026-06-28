@@ -539,7 +539,7 @@ export default function AdminUsers() {
                   {/* Expanded Details */}
                   {expandedUser === user.id && (
                     <tr className="bg-muted/20 border-b border-border">
-                      <td colSpan={9} className="p-4">
+                      <td colSpan={11} className="p-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {/* Orders */}
                           <div className="border border-border rounded-lg p-4">
