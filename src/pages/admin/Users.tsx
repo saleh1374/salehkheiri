@@ -14,6 +14,9 @@ import {
   BookOpen,
   Eye,
   AlertTriangle,
+  Mail,
+  MailCheck,
+  MailWarning,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +56,8 @@ interface User {
   full_name: string | null;
   phone: string | null;
   created_at: string;
+  email: string | null;
+  email_confirmed_at: string | null;
   orders_count: number;
   bookings_count: number;
   enrollments_count: number;
@@ -127,6 +132,20 @@ export default function AdminUsers() {
       const roleMap = new Map<string, string>();
       rolesData?.forEach((r) => roleMap.set(r.user_id, r.role));
 
+      // Fetch auth users (email + confirmation status) via edge function
+      const authMap = new Map<string, { email: string | null; email_confirmed_at: string | null }>();
+      try {
+        const authRes = await supabase.functions.invoke("manage-user", {
+          body: { action: "list" },
+        });
+        const authUsers = (authRes.data as any)?.users || [];
+        authUsers.forEach((u: any) =>
+          authMap.set(u.id, { email: u.email ?? null, email_confirmed_at: u.email_confirmed_at ?? null })
+        );
+      } catch (e) {
+        console.error("Failed to load auth users:", e);
+      }
+
       // Fetch counts for each user
       const usersWithCounts = await Promise.all(
         (profiles || []).map(async (profile) => {
@@ -136,8 +155,11 @@ export default function AdminUsers() {
             supabase.from("course_enrollments").select("id", { count: "exact", head: true }).eq("user_id", profile.id),
           ]);
 
+          const auth = authMap.get(profile.id);
           return {
             ...profile,
+            email: auth?.email ?? null,
+            email_confirmed_at: auth?.email_confirmed_at ?? null,
             orders_count: ordersCount || 0,
             bookings_count: bookingsCount || 0,
             enrollments_count: enrollmentsCount || 0,
@@ -155,10 +177,24 @@ export default function AdminUsers() {
     }
   };
 
+  const handleConfirmEmail = async (userId: string) => {
+    try {
+      const response = await supabase.functions.invoke("manage-user", {
+        body: { action: "confirm_email", user_id: userId },
+      });
+      if (response.error) throw new Error(response.error.message);
+      toast.success("ایمیل کاربر تأیید شد");
+      fetchUsers();
+    } catch (error: any) {
+      toast.error(error.message || "خطا در تأیید ایمیل");
+    }
+  };
+
   const filteredUsers = users.filter(
     (user) =>
       user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phone?.includes(searchTerm)
+      user.phone?.includes(searchTerm) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddUser = async () => {
@@ -341,7 +377,7 @@ export default function AdminUsers() {
         <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="جستجو بر اساس نام یا شماره تماس..."
+            placeholder="جستجو بر اساس نام، ایمیل یا شماره تماس..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pr-10"
@@ -365,6 +401,8 @@ export default function AdminUsers() {
               <tr className="bg-muted/50 border-y border-border">
                 <th className="w-10 text-center p-3"></th>
                 <th className="text-right p-3 border-r border-border min-w-[150px] text-sm font-semibold text-foreground">نام</th>
+                <th className="text-right p-3 border-r border-border min-w-[200px] text-sm font-semibold text-foreground">ایمیل</th>
+                <th className="text-center p-3 border-r border-border min-w-[130px] text-sm font-semibold text-foreground">وضعیت ایمیل</th>
                 <th className="text-right p-3 border-r border-border min-w-[130px] text-sm font-semibold text-foreground">شماره تماس</th>
                 <th className="text-right p-3 border-r border-border min-w-[100px] text-sm font-semibold text-foreground">نقش</th>
                 <th className="text-center p-3 border-r border-border min-w-[80px] text-sm font-semibold text-foreground">سفارشات</th>
@@ -401,6 +439,30 @@ export default function AdminUsers() {
                     </td>
                     <td className="text-right p-3 border-r border-border text-sm font-medium">
                       {user.full_name || "بدون نام"}
+                    </td>
+                    <td className="text-right p-3 border-r border-border text-sm" dir="ltr">
+                      <span className="truncate block max-w-[220px]">{user.email || "-"}</span>
+                    </td>
+                    <td className="text-center p-3 border-r border-border">
+                      {user.email_confirmed_at ? (
+                        <Badge className="bg-green-500/20 text-green-700 dark:text-green-400 border-none gap-1">
+                          <MailCheck className="w-3 h-3" />
+                          تأیید شده
+                        </Badge>
+                      ) : user.email ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 h-7 text-xs"
+                          onClick={() => handleConfirmEmail(user.id)}
+                          title="تأیید دستی ایمیل"
+                        >
+                          <MailWarning className="w-3 h-3 text-amber-600" />
+                          تأیید کن
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">-</span>
+                      )}
                     </td>
                     <td className="text-right p-3 border-r border-border text-sm">
                       {user.phone || "-"}
@@ -477,7 +539,7 @@ export default function AdminUsers() {
                   {/* Expanded Details */}
                   {expandedUser === user.id && (
                     <tr className="bg-muted/20 border-b border-border">
-                      <td colSpan={9} className="p-4">
+                      <td colSpan={11} className="p-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           {/* Orders */}
                           <div className="border border-border rounded-lg p-4">

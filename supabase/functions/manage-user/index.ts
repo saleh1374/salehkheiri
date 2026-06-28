@@ -66,10 +66,48 @@ serve(async (req) => {
 
     console.log('Managing user:', user_id, 'Action:', action);
 
+    // LIST action - return all auth users with email + confirmation status
+    if (action === 'list') {
+      const { data: list, error: listError } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (listError) {
+        return new Response(
+          JSON.stringify({ error: listError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const users = (list?.users || []).map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        email_confirmed_at: u.email_confirmed_at,
+        created_at: u.created_at,
+      }));
+      return new Response(
+        JSON.stringify({ users }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (!user_id) {
       return new Response(
         JSON.stringify({ error: 'شناسه کاربر الزامی است' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // CONFIRM EMAIL action
+    if (action === 'confirm_email') {
+      const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(user_id, {
+        email_confirm: true,
+      });
+      if (confirmError) {
+        return new Response(
+          JSON.stringify({ error: confirmError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ success: true, message: 'ایمیل کاربر تأیید شد' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
