@@ -132,6 +132,20 @@ export default function AdminUsers() {
       const roleMap = new Map<string, string>();
       rolesData?.forEach((r) => roleMap.set(r.user_id, r.role));
 
+      // Fetch auth users (email + confirmation status) via edge function
+      const authMap = new Map<string, { email: string | null; email_confirmed_at: string | null }>();
+      try {
+        const authRes = await supabase.functions.invoke("manage-user", {
+          body: { action: "list" },
+        });
+        const authUsers = (authRes.data as any)?.users || [];
+        authUsers.forEach((u: any) =>
+          authMap.set(u.id, { email: u.email ?? null, email_confirmed_at: u.email_confirmed_at ?? null })
+        );
+      } catch (e) {
+        console.error("Failed to load auth users:", e);
+      }
+
       // Fetch counts for each user
       const usersWithCounts = await Promise.all(
         (profiles || []).map(async (profile) => {
@@ -141,8 +155,11 @@ export default function AdminUsers() {
             supabase.from("course_enrollments").select("id", { count: "exact", head: true }).eq("user_id", profile.id),
           ]);
 
+          const auth = authMap.get(profile.id);
           return {
             ...profile,
+            email: auth?.email ?? null,
+            email_confirmed_at: auth?.email_confirmed_at ?? null,
             orders_count: ordersCount || 0,
             bookings_count: bookingsCount || 0,
             enrollments_count: enrollmentsCount || 0,
@@ -160,10 +177,24 @@ export default function AdminUsers() {
     }
   };
 
+  const handleConfirmEmail = async (userId: string) => {
+    try {
+      const response = await supabase.functions.invoke("manage-user", {
+        body: { action: "confirm_email", user_id: userId },
+      });
+      if (response.error) throw new Error(response.error.message);
+      toast.success("ایمیل کاربر تأیید شد");
+      fetchUsers();
+    } catch (error: any) {
+      toast.error(error.message || "خطا در تأیید ایمیل");
+    }
+  };
+
   const filteredUsers = users.filter(
     (user) =>
       user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.phone?.includes(searchTerm)
+      user.phone?.includes(searchTerm) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddUser = async () => {
