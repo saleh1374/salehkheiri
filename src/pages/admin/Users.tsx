@@ -56,6 +56,8 @@ interface User {
   full_name: string | null;
   phone: string | null;
   created_at: string;
+  email: string | null;
+  email_confirmed_at: string | null;
   orders_count: number;
   bookings_count: number;
   enrollments_count: number;
