@@ -75,85 +75,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Login با بک‌اند (Express) بدون وابستگی به تأیید ایمیل Supabase
   const signIn = async (email: string, password: string) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      let data: any = null;
-      let raw: string | null = null;
-
-      try {
-        raw = await res.text();
-        data = raw ? JSON.parse(raw) : null;
-      } catch (parseErr) {
-        console.error("Login response is not valid JSON:", raw);
-        if (!res.ok) {
-          return {
-            error: new Error("خطا در ورود (پاسخ نامعتبر از سرور)"),
-          };
-        }
-      }
-
-      if (!res.ok) {
-        const message = data?.error || data?.message || "Login failed";
-        return { error: new Error(message) };
-      }
-
-      localStorage.setItem("auth_token", data.token);
-      setBackendUser(data.user as BackendUser);
-
-      return { error: null };
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error: error ?? null };
     } catch (err: any) {
       return { error: err };
     }
   };
 
-  // Signup: اول کاربر را در بک‌اند می‌سازد، بعد (در صورت نیاز) در Supabase
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/users`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name: fullName }),
-      });
-
-      let data: any = null;
-      let raw: string | null = null;
-
-      try {
-        raw = await res.text();
-        data = raw ? JSON.parse(raw) : null;
-      } catch (parseErr) {
-        console.error("Signup response is not valid JSON:", raw);
-        if (!res.ok) {
-          return {
-            error: new Error("خطا در ثبت‌نام (پاسخ نامعتبر از سرور)"),
-          };
-        }
-      }
-
-      if (!res.ok) {
-        const message = data?.error || data?.message || "Signup failed";
-        return { error: new Error(message) };
-      }
-
       const redirectUrl = `${window.location.origin}/`;
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName,
-          },
+          data: { full_name: fullName },
         },
       });
-
       return { error: error ?? null };
     } catch (err: any) {
       return { error: err };
