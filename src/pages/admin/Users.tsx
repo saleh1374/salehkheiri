@@ -401,6 +401,8 @@ export default function AdminUsers() {
               <tr className="bg-muted/50 border-y border-border">
                 <th className="w-10 text-center p-3"></th>
                 <th className="text-right p-3 border-r border-border min-w-[150px] text-sm font-semibold text-foreground">نام</th>
+                <th className="text-right p-3 border-r border-border min-w-[200px] text-sm font-semibold text-foreground">ایمیل</th>
+                <th className="text-center p-3 border-r border-border min-w-[130px] text-sm font-semibold text-foreground">وضعیت ایمیل</th>
                 <th className="text-right p-3 border-r border-border min-w-[130px] text-sm font-semibold text-foreground">شماره تماس</th>
                 <th className="text-right p-3 border-r border-border min-w-[100px] text-sm font-semibold text-foreground">نقش</th>
                 <th className="text-center p-3 border-r border-border min-w-[80px] text-sm font-semibold text-foreground">سفارشات</th>
